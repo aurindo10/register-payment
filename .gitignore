@@ -1,0 +1,57 @@
+HELP.md
+target/
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+
+# Logs
+*.log
+logs/
+
+# Local/sensitive configuration
+# Be specific with properties files if they contain sensitive data.
+# For example, if you have application-dev.properties with local DB creds:
+application-dev.properties
+application-local.properties
+# Or, if you want to ignore all properties files in a specific sensitive folder:
+src/main/resources/config-local/*.properties
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Maven Wrapper itself should NOT be ignored for consistency
+# The .mvn/wrapper/maven-wrapper.jar can sometimes be ignored, but often it's committed for simplicity.
+# If you choose to ignore it:
+# .mvn/wrapper/maven-wrapper.jar
+
+# JVM crash logs
+hs_err_pid*.log
