@@ -19,16 +19,6 @@ public class CompanyServiceImpl implements CompanyService {
   }
 
   @Override
-  public CompanyEntity getCompanyByCnpj(String cnpj) {
-    return companyRepository.findByCnpj(cnpj);
-  }
-
-  @Override
-  public CompanyEntity updateCompany(CompanyEntity company) {
-    return companyRepository.update(company);
-  }
-
-  @Override
   public void deleteCompany(Long id) {
     companyRepository.deleteById(id);
   }

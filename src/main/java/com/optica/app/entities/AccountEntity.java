@@ -6,10 +6,12 @@ import java.time.LocalDateTime;
 import jakarta.persistence.*;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
+import lombok.Builder;
 
 
 @Entity
 @Table(name = "account")
+@Builder
 public class AccountEntity {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -25,7 +27,8 @@ public class AccountEntity {
   private String externalAccountId;
 
   @Column(name = "company_id")
-  private Long companyEntity;
+  @OneToOne
+  private Long companyId;
 
   @Column(name = "date_updated")
   private LocalDateTime dateUpdated;
