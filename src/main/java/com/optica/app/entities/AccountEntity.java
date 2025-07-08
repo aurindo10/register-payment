@@ -26,9 +26,9 @@ public class AccountEntity {
   @Column(name = "external_account_id")
   private String externalAccountId;
 
-  @Column(name = "company_id")
-  @OneToOne
-  private Long companyId;
+  @OneToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "company_id")
+  private CompanyEntity company;
 
   @Column(name = "date_updated")
   private LocalDateTime dateUpdated;

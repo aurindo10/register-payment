@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import com.optica.app.entities.AccountEntity;
+import com.optica.app.entities.CompanyEntity;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -21,11 +22,11 @@ public class AccountRequest {
   private LocalDateTime createdAt;
   private LocalDateTime dateUpdated;
 
-  public AccountEntity toEntity(AccountRequest account) {
+  public AccountEntity toEntity(AccountRequest account, CompanyEntity company) {
     return AccountEntity.builder()
         .balance(BigDecimal.valueOf(account.getBalance().doubleValue()))
         .externalAccountId(account.getExternalAccountId())
-        .companyId(account.getCompanyId())
+        .company(company)
         .build();
   }
 }

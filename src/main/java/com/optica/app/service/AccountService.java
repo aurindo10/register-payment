@@ -6,6 +6,5 @@ import com.optica.app.entities.AccountEntity;
 public interface AccountService {
   AccountEntity createAccount(AccountRequest account);
   AccountEntity getAccountById(Long id);
-  AccountEntity updateAccount(AccountRequest account);
   void deleteAccount(Long id);
 }

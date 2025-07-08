@@ -7,7 +7,9 @@ import com.optica.app.repository.CompanyRepository;
 import com.optica.app.service.CompanyService;
 
 import lombok.AllArgsConstructor;
+import org.springframework.stereotype.Service;
 
+@Service
 @AllArgsConstructor
 public class CompanyServiceImpl implements CompanyService {
 
@@ -26,5 +28,10 @@ public class CompanyServiceImpl implements CompanyService {
   @Override
   public List<CompanyEntity> getAllCompanies() {
     return companyRepository.findAll();
+  }
+
+  @Override
+  public CompanyEntity find(Long id) {
+    return companyRepository.findById(id).orElseThrow(() -> new RuntimeException("Company not found"));
   }
 }

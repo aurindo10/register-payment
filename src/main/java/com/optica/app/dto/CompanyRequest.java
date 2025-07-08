@@ -20,7 +20,6 @@ public class CompanyRequest {
     return CompanyEntity.builder()
         .name(company.getName())
         .cnpj(company.getCnpj())
-        .externalCompanyId(company.externalCompanyId)
         .externalCompanyId(company.getExternalCompanyId())
         .build();
   }
