@@ -6,12 +6,18 @@ import java.time.LocalDateTime;
 import jakarta.persistence.*;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 
 @Entity
 @Table(name = "account")
 @Builder
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class AccountEntity {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
