@@ -1,6 +1,7 @@
 package com.optica.app.entities;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import jakarta.persistence.*;
 import jakarta.persistence.Entity;
@@ -28,4 +29,7 @@ public class RegisterEntity {
   
   @Column(name = "user_id")
   private String userId;
+
+  @ManyToMany(fetch = FetchType.LAZY)
+  private List<TransactionEntity> transactions;
 }
