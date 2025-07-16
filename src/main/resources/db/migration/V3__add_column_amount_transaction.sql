@@ -1,0 +1,1 @@
+ALTER TABLE transaction ADD COLUMN amount NUMERIC(19, 2) NOT NULL;

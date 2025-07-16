@@ -30,4 +30,7 @@ public class TransactionEntity {
 
   @Column(name = "updated_at")
   private LocalDateTime updatedAt;
+
+  @Column(name = "amount")
+  private Double amount;
 }
