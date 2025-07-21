@@ -33,4 +33,7 @@ public class TransactionEntity {
 
   @Column(name = "amount")
   private Double amount;
+
+  @Column(name = "conciliation_id")
+  private ConciliationEntity  conciliation;
 }
