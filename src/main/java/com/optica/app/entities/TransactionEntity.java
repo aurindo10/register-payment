@@ -5,6 +5,8 @@ import java.util.List;
 
 import jakarta.persistence.FetchType;
 import jakarta.persistence.ManyToMany;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import jakarta.persistence.Id;
@@ -34,6 +36,7 @@ public class TransactionEntity {
   @Column(name = "amount")
   private Double amount;
 
-  @Column(name = "conciliation_id")
-  private ConciliationEntity  conciliation;
+  @ManyToOne
+  @JoinColumn(name = "conciliation_id")
+  private ConciliationEntity conciliation;
 }

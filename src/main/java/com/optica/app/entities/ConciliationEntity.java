@@ -15,6 +15,8 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+
+@Table(name = "conciliation")
 public class ConciliationEntity {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
