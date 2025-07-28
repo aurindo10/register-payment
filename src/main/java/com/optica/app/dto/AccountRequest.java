@@ -19,8 +19,6 @@ public class AccountRequest {
   private Number balance;
   private String externalAccountId;
   private Long companyId;
-  private LocalDateTime createdAt;
-  private LocalDateTime dateUpdated;
 
   public AccountEntity toEntity(AccountRequest account, CompanyEntity company) {
     return AccountEntity.builder()

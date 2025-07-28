@@ -3,6 +3,9 @@ package com.optica.app.entities;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+
 import jakarta.persistence.FetchType;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
@@ -13,9 +16,18 @@ import jakarta.persistence.Id;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Column;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "transaction")
+@Builder
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class TransactionEntity {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -24,7 +36,8 @@ public class TransactionEntity {
   @Column(name = "external_transaction_id")
   private String externalTransactionId;
 
-  @ManyToMany(fetch = FetchType.LAZY)
+  @ManyToMany(fetch = FetchType.LAZY, mappedBy = "transactions")
+  @JsonManagedReference
   private List<RegisterEntity> registers;
 
   @Column(name = "created_at")

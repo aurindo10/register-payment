@@ -29,4 +29,5 @@ public class CompanyController {
   public List<CompanyEntity> getAllCompanies() {
     return companyService.getAllCompanies();
   }
+
 }
