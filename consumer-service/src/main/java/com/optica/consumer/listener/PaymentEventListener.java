@@ -6,7 +6,6 @@ import com.optica.shared.events.RegisterCreatedEvent;
 import com.optica.shared.dto.AccountRequest;
 import com.optica.shared.dto.CompanyRequest;
 import com.optica.shared.dto.RegisterRequest;
-import com.optica.shared.entities.RegisterTypeEntity;
 import com.optica.consumer.service.AccountService;
 import com.optica.consumer.service.CompanyService;
 import com.optica.consumer.service.RegisterService;
@@ -61,8 +60,8 @@ public class PaymentEventListener {
         log.info("Received register created event: {}", event);
         try {
             RegisterRequest request = new RegisterRequest(
-                    RegisterTypeEntity.valueOf(event.getType()),
-                    event.getAmount(),
+                    event.getType(),
+                    event.getAmount().doubleValue(),
                     event.getAccountId(),
                     event.getUserId()
             );

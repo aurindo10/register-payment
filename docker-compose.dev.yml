@@ -1,9 +1,12 @@
 version: "3.8"
 
+# Development version - builds images on-the-fly
+# Use: docker-compose -f docker-compose.dev.yml up -d --build
+
 services:
   postgres:
     image: postgres:15
-    container_name: payment-postgres
+    container_name: payment-postgres-dev
     environment:
       POSTGRES_DB: optica-db
       POSTGRES_USER: postgres
@@ -11,7 +14,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data_dev:/var/lib/postgresql/data
       - ./consumer-service/src/main/resources/db/migration:/docker-entrypoint-initdb.d
     networks:
       - payment-network
@@ -24,7 +27,7 @@ services:
 
   rabbitmq:
     image: rabbitmq:3.12-management
-    container_name: payment-rabbitmq
+    container_name: payment-rabbitmq-dev
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
@@ -32,7 +35,7 @@ services:
       - "5672:5672"
       - "15672:15672"
     volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
+      - rabbitmq_data_dev:/var/lib/rabbitmq
     networks:
       - payment-network
     restart: unless-stopped
@@ -43,8 +46,10 @@ services:
       retries: 3
 
   gateway-service:
-    image: optica/gateway-service:latest
-    container_name: payment-gateway
+    build:
+      context: ./gateway-service
+      dockerfile: Dockerfile
+    container_name: payment-gateway-dev
     environment:
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
@@ -66,8 +71,10 @@ services:
       retries: 3
 
   consumer-service:
-    image: optica/consumer-service:latest
-    container_name: payment-consumer
+    build:
+      context: ./consumer-service
+      dockerfile: Dockerfile
+    container_name: payment-consumer-dev
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
@@ -95,24 +102,9 @@ services:
       timeout: 10s
       retries: 3
 
-  nginx:
-    image: nginx:alpine
-    container_name: payment-nginx
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-      - ./nginx/ssl:/etc/nginx/ssl
-    depends_on:
-      - gateway-service
-    networks:
-      - payment-network
-    restart: unless-stopped
-
 volumes:
-  postgres_data:
-  rabbitmq_data:
+  postgres_data_dev:
+  rabbitmq_data_dev:
 
 networks:
   payment-network:

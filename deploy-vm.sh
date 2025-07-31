@@ -13,21 +13,21 @@ if ! docker info > /dev/null 2>&1; then
     exit 1
 fi
 
-# Build the project
-echo "🔨 Building Maven project..."
-mvn clean install -DskipTests
+# Build the project and Docker images
+echo "🔨 Building Maven project and Docker images..."
+./build-images.sh
 
 # Stop existing services if running
 echo "🛑 Stopping existing services..."
 docker-compose down --remove-orphans || true
 
-# Remove old images to free space
+# Remove old images to free space (but keep our newly built ones)
 echo "🧹 Cleaning up old Docker images..."
-docker system prune -f
+docker image prune -f
 
-# Build and start services
-echo "🐳 Building and starting services..."
-docker-compose up -d --build
+# Start services using pre-built images
+echo "🐳 Starting services with pre-built images..."
+docker-compose up -d
 
 # Wait for services to be healthy
 echo "⏳ Waiting for services to be ready..."

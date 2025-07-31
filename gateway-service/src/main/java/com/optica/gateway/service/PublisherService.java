@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Service
@@ -35,7 +36,7 @@ public class PublisherService {
 
     public void publishAccountCreated(AccountRequest request) {
         AccountCreatedEvent event = new AccountCreatedEvent(
-                request.getBalance(),
+                BigDecimal.valueOf(request.getBalance().doubleValue()),
                 request.getExternalAccountId(),
                 request.getCompanyId(),
                 LocalDateTime.now()
@@ -47,8 +48,8 @@ public class PublisherService {
 
     public void publishRegisterCreated(RegisterRequest request) {
         RegisterCreatedEvent event = new RegisterCreatedEvent(
-                request.getType().name(),
-                request.getAmount(),
+                request.getType(),
+                BigDecimal.valueOf(request.getAmount()),
                 request.getAccountId(),
                 request.getUserId(),
                 LocalDateTime.now()
