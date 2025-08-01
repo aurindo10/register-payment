@@ -7,20 +7,69 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
-# Check prerequisites
-echo "Checking prerequisites..."
+# Update system packages
+echo "Updating system packages..."
+sudo apt update
 
+# Install Java 21
+echo "Installing Java 21..."
+if ! command_exists java; then
+    sudo apt install -y openjdk-21-jdk
+    echo "✅ Java 21 installed"
+else
+    JAVA_VERSION=$(java -version 2>&1 | awk -F '"' '/version/ {print $2}' | cut -d'.' -f1)
+    if [ "$JAVA_VERSION" != "21" ]; then
+        echo "⚠️  Java version $JAVA_VERSION found, installing Java 21..."
+        sudo apt install -y openjdk-21-jdk
+        sudo update-alternatives --config java
+    fi
+    echo "✅ Java 21 available"
+fi
+
+# Set JAVA_HOME
+export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+echo "export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64" >> ~/.bashrc
+
+# Install Maven
+echo "Installing Maven..."
+if ! command_exists mvn; then
+    sudo apt install -y maven
+    echo "✅ Maven installed"
+else
+    echo "✅ Maven already installed"
+fi
+
+# Install Docker if not present
+echo "Installing Docker..."
 if ! command_exists docker; then
-    echo "❌ Docker not found. Please install Docker first."
-    exit 1
+    # Install Docker
+    sudo apt install -y apt-transport-https ca-certificates curl gnupg lsb-release
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    sudo apt update
+    sudo apt install -y docker-ce docker-ce-cli containerd.io
+    
+    # Add current user to docker group
+    sudo usermod -aG docker $USER
+    echo "✅ Docker installed (logout/login required for docker group)"
+else
+    echo "✅ Docker already installed"
 fi
 
+# Install curl if not present
 if ! command_exists curl; then
-    echo "❌ curl not found. Please install curl first."
-    exit 1
+    sudo apt install -y curl
+    echo "✅ curl installed"
 fi
 
-echo "✅ Prerequisites met"
+# Verify versions
+echo ""
+echo "=== Installed Versions ==="
+java -version
+mvn -version
+docker --version
+
+echo "✅ All prerequisites met"
 
 # Install K3s if not already installed
 if ! command_exists k3s; then

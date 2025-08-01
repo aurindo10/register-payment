@@ -4,8 +4,10 @@
 
 - Ubuntu 20.04+ ou similar
 - 4GB+ RAM recomendado
-- Docker instalado
 - Usuário com privilégios sudo
+- Conexão com internet
+
+**Nota**: Java 21, Maven e Docker serão instalados automaticamente pelo script
 
 ## 1. Setup Inicial da VM
 
@@ -14,9 +16,12 @@
 git clone <seu-repositorio>
 cd register-payment
 
-# 2. Executar setup do K3s (instala K3s + registry local)
+# 2. Executar setup completo (instala Java 21, Maven, Docker, K3s + registry local)
 sudo chmod +x k3s-setup.sh
 ./k3s-setup.sh
+
+# 3. Reiniciar sessão para aplicar grupos Docker (se necessário)
+# logout && login  # ou usar 'newgrp docker'
 ```
 
 ## 2. Deploy da Aplicação
