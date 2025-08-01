@@ -1,23 +1,20 @@
 #!/bin/bash
 
-echo "Building Payment System Docker Images..."
+echo "Building Payment System Docker Images with Multi-stage Build..."
 
-echo "Building parent project..."
-mvn clean install -DskipTests
-
-echo "Building Gateway Service image..."
+echo "Building Gateway Service image (includes Maven build)..."
 cd gateway-service
-mvn clean package -DskipTests
 docker build -t optica/gateway-service:latest .
 cd ..
 
-echo "Building Consumer Service image..."
+echo "Building Consumer Service image (includes Maven build)..."
 cd consumer-service
-mvn clean package -DskipTests
 docker build -t optica/consumer-service:latest .
 cd ..
 
 echo "Docker images built successfully!"
 echo "Images:"
 echo "- optica/gateway-service:latest"
-echo "- optica/consumer-service:latest" 
+echo "- optica/consumer-service:latest"
+echo ""
+echo "Note: Java/Maven build happens inside Docker containers" 

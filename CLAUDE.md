@@ -6,16 +6,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Build and Test
 ```bash
-# Build entire project (parent + all modules)
+# Build Docker images (includes Java/Maven build inside containers)
+./build-images.sh
+
+# For local development only (requires Java 21 + Maven):
 mvn clean install
-
-# Build without tests
-mvn clean install -DskipTests
-
-# Run tests
 mvn test
-
-# Build specific service
 cd gateway-service && mvn clean package
 cd consumer-service && mvn clean package
 ```

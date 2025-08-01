@@ -7,7 +7,7 @@
 - Usuário com privilégios sudo
 - Conexão com internet
 
-**Nota**: Java 21, Maven e Docker serão instalados automaticamente pelo script
+**Nota**: Docker será instalado automaticamente. Java 21 e Maven ficam dentro dos containers (multi-stage build)
 
 ## 1. Setup Inicial da VM
 
@@ -16,7 +16,7 @@
 git clone <seu-repositorio>
 cd register-payment
 
-# 2. Executar setup completo (instala Java 21, Maven, Docker, K3s + registry local)
+# 2. Executar setup completo (instala Docker, K3s + registry local)
 sudo chmod +x k3s-setup.sh
 ./k3s-setup.sh
 
