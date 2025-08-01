@@ -1,19 +1,19 @@
 #!/bin/bash
 
-echo "Deploying Payment System to Kubernetes..."
+echo "Deploying Payment System to K3s..."
 
 # 1. Build images locally
-./build-images.sh
+../build-images.sh
 
-# 2. Tag for registry
-docker tag optica/gateway-service:latest your-registry/optica/gateway-service:latest
-docker tag optica/consumer-service:latest your-registry/optica/consumer-service:latest
+# 2. Tag for local registry
+docker tag optica/gateway-service:latest localhost:5000/optica/gateway-service:latest
+docker tag optica/consumer-service:latest localhost:5000/optica/consumer-service:latest
 
-# 3. Push to registry
-docker push your-registry/optica/gateway-service:latest
-docker push your-registry/optica/consumer-service:latest
+# 3. Push to local registry
+docker push localhost:5000/optica/gateway-service:latest
+docker push localhost:5000/optica/consumer-service:latest
 
-# 4. Update k8s YAML to use registry images
+echo "Images pushed to local registry..."
 
 echo "Creating namespace..."
 kubectl apply -f namespace.yaml
