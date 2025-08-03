@@ -6,136 +6,125 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Build and Test
 ```bash
-# Build Docker images (includes Java/Maven build inside containers)
-./build-images.sh
-
-# For local development only (requires Java 21 + Maven):
+# Build the QStash consumer application
+cd qstash-consumer
 mvn clean install
 mvn test
-cd gateway-service && mvn clean package
-cd consumer-service && mvn clean package
+
+# Build Docker image
+docker build -t qstash-consumer:latest .
+
+# Package application
+mvn clean package -DskipTests
 ```
 
 ### Local Development
 ```bash
-# Start PostgreSQL (required for consumer-service)
+# Start PostgreSQL (required for qstash-consumer)
 docker run -d --name postgres \
   -e POSTGRES_DB=optica-db \
   -e POSTGRES_USER=postgres \
   -e POSTGRES_PASSWORD=optica123 \
   -p 5432:5432 postgres:15
 
-# Start RabbitMQ (required for message queuing)
-docker run -d --name rabbitmq \
-  -e RABBITMQ_DEFAULT_USER=guest \
-  -e RABBITMQ_DEFAULT_PASS=guest \
-  -p 5672:5672 -p 15672:15672 \
-  rabbitmq:3.12-management
+# Set QStash environment variables
+export QSTASH_CURRENT_SIGNING_KEY=your_current_signing_key_here
+export QSTASH_NEXT_SIGNING_KEY=your_next_signing_key_here
 
-# Run gateway service (port 8080)
-cd gateway-service && mvn spring-boot:run
-
-# Run consumer service (port 8081)
-cd consumer-service && mvn spring-boot:run
+# Run QStash consumer service (port 8080)
+cd qstash-consumer && mvn spring-boot:run
 ```
 
-### Docker and Kubernetes (K3s)
+### Docker Deployment
 ```bash
-# Setup K3s on VM (first time only)
-./k3s-setup.sh
+# Deploy complete stack (PostgreSQL + QStash Consumer)
+cd qstash-consumer
+./deploy.sh
 
-# Build Docker images
-./build-images.sh
+# View logs
+docker-compose logs -f qstash-consumer
 
-# Deploy to K3s
-cd k8s && ./deploy.sh
-
-# Check deployment status
-sudo k3s kubectl get pods -n payment-system
-sudo k3s kubectl logs -f deployment/gateway-service -n payment-system
-sudo k3s kubectl logs -f deployment/consumer-service -n payment-system
+# Stop services
+docker-compose down
 ```
 
 ## Architecture Overview
 
-This is a **multi-module Spring Boot microservices** project with **event-driven architecture** using RabbitMQ:
+This is a **single Spring Boot application** that processes **QStash webhook messages**:
 
-### Core Modules
-- **shared-module**: Common entities, DTOs, and events shared across services
-- **gateway-service**: HTTP REST API that publishes events to RabbitMQ (port 8080)
-- **consumer-service**: Consumes RabbitMQ messages and handles database operations (port 8081)
+### Core Application
+- **qstash-consumer**: Single Spring Boot application that receives QStash webhooks and processes payment data (port 8080)
 
 ### Message Flow
-1. HTTP requests → Gateway Service
-2. Gateway publishes events to RabbitMQ (payment.exchange)
-3. Consumer Service processes events and updates PostgreSQL database
+1. Frontend sends data to QStash API
+2. QStash delivers webhook messages to consumer endpoints
+3. QStash Consumer verifies signatures and processes messages
+4. Data is stored in PostgreSQL database
 
 ### Key Technologies
-- Java 21 + Spring Boot 3.5.3
-- RabbitMQ for messaging (Topic exchange)
+- Java 21 + Spring Boot 3.2.0
+- QStash for serverless message queuing
 - PostgreSQL with Flyway migrations
 - JPA/Hibernate for database access
-- Docker + Kubernetes deployment
+- Docker for deployment
 
 ## Database Schema
 
-Tables managed via Flyway migrations in `src/main/resources/db/migration/`:
+Tables managed via Flyway migrations in `qstash-consumer/src/main/resources/db/migration/`:
 - `company` - Company entities
 - `account` - Account entities linked to companies
 - `register` - Transaction registers
 - `transaction` - Financial transactions
 - `conciliation` - Reconciliation records
 
-## RabbitMQ Configuration
+## QStash Integration
 
-- **Exchange**: `payment.exchange` (Topic)
-- **Queues & Routing Keys**:
-  - `company.queue` → `company.created`
-  - `account.queue` → `account.created` 
-  - `register.queue` → `register.created`
+- **Webhook Endpoints**: `/api/v1/webhooks/qstash/{entity}`
+- **Signature Verification**: JWT-based with HMAC-256
+- **Retry Handling**: Automatic retries by QStash on 5xx responses
+- **Security**: All endpoints require valid QStash signatures
 
 ## REST API Endpoints
 
-### Gateway Service (port 8080)
-- `POST /api/v1/gateway/companies` - Create company
-- `POST /api/v1/gateway/accounts` - Create account  
-- `POST /api/v1/gateway/registers` - Create register
-- `GET /api/v1/gateway/health` - Health check
-
-### Consumer Service (port 8081)
-- `GET /actuator/health` - Health check
+### QStash Webhook Endpoints (port 8080)
+- `POST /api/v1/webhooks/qstash/company` - Process company creation
+- `POST /api/v1/webhooks/qstash/account` - Process account creation
+- `POST /api/v1/webhooks/qstash/register` - Process register creation
+- `GET /api/v1/webhooks/qstash/health` - Health check
 
 ## Environment Configuration
 
-Services use environment variables with sensible defaults:
+The service uses environment variables with sensible defaults:
 
-### Database (Consumer Service)
+### QStash Configuration
+- `QSTASH_CURRENT_SIGNING_KEY` - Current signing key for webhook verification (required)
+- `QSTASH_NEXT_SIGNING_KEY` - Next signing key for key rotation (optional)
+
+### Database Configuration
 - `POSTGRES_HOST` (default: localhost)
 - `POSTGRES_PORT` (default: 5432)
 - `POSTGRES_DB` (default: optica-db)
 - `POSTGRES_USER` (default: postgres)
 - `POSTGRES_PASSWORD` (default: optica123)
 
-### RabbitMQ (Both Services)
-- `RABBITMQ_HOST` (default: localhost)
-- `RABBITMQ_PORT` (default: 5672)
-- `RABBITMQ_USERNAME` (default: guest)
-- `RABBITMQ_PASSWORD` (default: guest)
-
 ## Development Guidelines
 
-### Module Dependencies
-- Services depend on `shared-module` for common entities and DTOs
-- Always build parent project first: `mvn clean install`
-- Services are independently deployable but share data contracts
+### Application Structure
+- All code is in single module: `qstash-consumer/`
+- Entities in `src/main/java/com/optica/consumer/entity/`
+- DTOs in `src/main/java/com/optica/consumer/dto/`
+- Controllers in `src/main/java/com/optica/consumer/controller/`
+- Services in `src/main/java/com/optica/consumer/service/`
+- Repositories in `src/main/java/com/optica/consumer/repository/`
 
 ### Testing Strategy
-- Basic Spring Boot test structure exists in `src/test/`
+- Spring Boot test structure in `src/test/`
 - Run tests with `mvn test`
-- Integration tests require running PostgreSQL and RabbitMQ
+- Use `./test-webhook.sh` to test webhook endpoints
+- Integration tests require running PostgreSQL
 
 ### Code Organization
-- Entities in `shared-module/src/main/java/com/optica/shared/entities/`
-- REST controllers in each service's `controller/` package
+- Single application with clear package separation
 - Service implementations follow interface pattern
 - Repository layer uses Spring Data JPA
+- Configuration classes in `config/` package

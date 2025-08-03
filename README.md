@@ -1,232 +1,211 @@
-# Payment System - Microservices Architecture
+# QStash Payment Consumer Service
 
-This project implements a microservices-based payment system using Spring Boot, RabbitMQ, and PostgreSQL, designed to run on Kubernetes.
+A Spring Boot application that processes payment-related messages from QStash webhooks and stores them in a PostgreSQL database. This service replaces traditional message brokers with QStash's serverless message queue for reliable, scalable message processing.
 
-## Architecture Overview
-
-The system consists of the following components:
-
-- **Gateway Service**: Exposes REST endpoints to the internet and publishes messages to RabbitMQ
-- **Consumer Service**: Consumes RabbitMQ messages and processes them (database operations)
-- **Shared Module**: Contains common entities, DTOs, and event classes
-- **RabbitMQ**: Message broker for asynchronous communication
-- **PostgreSQL**: Database for persistent storage
-
-## Module Structure
+## Architecture
 
 ```
-payment-system/
-├── shared-module/          # Common entities, DTOs, and events
-├── gateway-service/        # HTTP to RabbitMQ gateway
-├── consumer-service/       # RabbitMQ consumer and database processor
-├── k8s/                   # Kubernetes manifests
-├── build-images.sh        # Docker image build script
-└── pom.xml               # Parent POM
+Frontend → QStash API → QStash Consumer Service → PostgreSQL Database
 ```
 
-## API Endpoints
+The system consists of:
 
-### Gateway Service (Port 8080)
+### QStash Consumer Service (`qstash-consumer/`)
+- **Port**: 8080
+- **Purpose**: Receives webhook calls from QStash and processes payment data
+- **Responsibilities**:
+  - Receive and verify QStash webhook signatures
+  - Process company, account, and register creation messages
+  - Persist data to PostgreSQL database
+  - Provide health checks and monitoring
 
-- `POST /api/v1/gateway/companies` - Create company
-- `POST /api/v1/gateway/accounts` - Create account
-- `POST /api/v1/gateway/registers` - Create register
-- `GET /api/v1/gateway/health` - Health check
+### Key Features
+- **QStash Integration**: Secure webhook endpoints with JWT signature verification
+- **Asynchronous Processing**: Reliable message processing with automatic retries
+- **Database Management**: PostgreSQL with Flyway migrations
+- **Docker Deployment**: Single container deployment with docker-compose
+- **Health Monitoring**: Built-in health checks and logging
 
-### Consumer Service (Port 8081)
+## Technologies
 
-- `GET /actuator/health` - Health check
+- **Java 21** + **Spring Boot 3.2.0**
+- **QStash** for serverless message queuing
+- **PostgreSQL** with Flyway migrations
+- **Docker** for containerization
+- **Maven** for dependency management
 
-## Prerequisites
+## Quick Start
 
-- Java 21
-- Maven 3.6+
-- Docker
-- Kubernetes cluster
-- kubectl configured
+### 1. Prerequisites
+- Docker and Docker Compose
+- QStash account and signing keys from [Upstash Console](https://console.upstash.com/)
 
-## Local Development
-
-### 1. Build the Project
-
+### 2. Set Environment Variables
 ```bash
-mvn clean install
+export QSTASH_CURRENT_SIGNING_KEY=your_current_signing_key_here
+export QSTASH_NEXT_SIGNING_KEY=your_next_signing_key_here  # Optional
 ```
 
-### 2. Run Services Locally
-
-#### Start PostgreSQL and RabbitMQ (using Docker Compose)
-
+### 3. Deploy the Service
 ```bash
-docker run -d --name postgres \
-  -e POSTGRES_DB=optica-db \
-  -e POSTGRES_USER=postgres \
-  -e POSTGRES_PASSWORD=optica123 \
-  -p 5432:5432 postgres:15
-
-docker run -d --name rabbitmq \
-  -e RABBITMQ_DEFAULT_USER=guest \
-  -e RABBITMQ_DEFAULT_PASS=guest \
-  -p 5672:5672 -p 15672:15672 \
-  rabbitmq:3.12-management
-```
-
-#### Start Gateway Service
-
-```bash
-cd gateway-service
-mvn spring-boot:run
-```
-
-#### Start Consumer Service
-
-```bash
-cd consumer-service
-mvn spring-boot:run
-```
-
-## Kubernetes Deployment
-
-### 1. Build Docker Images
-
-```bash
-./build-images.sh
-```
-
-### 2. Deploy to Kubernetes
-
-```bash
-cd k8s
+cd qstash-consumer
 ./deploy.sh
 ```
 
-### 3. Access Services
+The service will be available at `http://localhost:8080`
 
-Add to your `/etc/hosts`:
+## API Endpoints
 
-```
-127.0.0.1 payment-gateway.local
-127.0.0.1 rabbitmq-management.local
-```
+### Webhook Endpoints (Called by QStash)
+- `POST /api/v1/webhooks/qstash/company` - Process company creation messages
+- `POST /api/v1/webhooks/qstash/account` - Process account creation messages
+- `POST /api/v1/webhooks/qstash/register` - Process register creation messages
 
-- Gateway API: http://payment-gateway.local
-- RabbitMQ Management: http://rabbitmq-management.local
+### Health Check
+- `GET /api/v1/webhooks/qstash/health` - Service health status
 
-## Testing the API
+## Frontend Integration
 
-### Create a Company
+Frontend applications send messages to QStash, which then delivers them to the webhook endpoints. See the [Frontend Integration Guide](FRONTEND_INTEGRATION_GUIDE.md) for detailed implementation examples.
 
-```bash
-curl -X POST http://payment-gateway.local/api/v1/gateway/companies \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Test Company",
-    "cnpj": "12345678901234",
-    "externalCompanyId": "ext-123"
-  }'
-```
+### Quick Example (JavaScript)
+```javascript
+import { Client } from '@upstash/qstash';
 
-### Create an Account
+const qstash = new Client({
+  token: process.env.QSTASH_TOKEN,
+});
 
-```bash
-curl -X POST http://payment-gateway.local/api/v1/gateway/accounts \
-  -H "Content-Type: application/json" \
-  -d '{
-    "balance": 1000.00,
-    "externalAccountId": "acc-123",
-    "companyId": 1
-  }'
+// Create a company
+await qstash.publishJSON({
+  url: "https://your-domain.com/api/v1/webhooks/qstash/company",
+  body: {
+    name: "Example Company",
+    cnpj: "12345678901234",
+    externalCompanyId: "EXT-001"
+  }
+});
 ```
 
-### Create a Register
+## Data Models
 
-```bash
-curl -X POST http://payment-gateway.local/api/v1/gateway/registers \
-  -H "Content-Type: application/json" \
-  -d '{
-    "type": "CREDIT",
-    "amount": 500.00,
-    "accountId": 1,
-    "userId": "user-123"
-  }'
+### CompanyRequest
+```json
+{
+  "name": "Company Name",
+  "cnpj": "12345678901234",
+  "externalCompanyId": "EXT-001"
+}
 ```
 
-## Message Flow
+### AccountRequest
+```json
+{
+  "companyId": 1,
+  "accountNumber": "ACC-001", 
+  "accountType": "CHECKING",
+  "balance": 1000.00
+}
+```
 
-1. **HTTP Request** → Gateway Service
-2. **RabbitMQ Message** → Queue (company.queue, account.queue, register.queue)
-3. **Consumer Service** → Processes message and saves to database
-
-## RabbitMQ Configuration
-
-- **Exchange**: `payment.exchange` (Topic)
-- **Queues**:
-  - `company.queue` (routing key: `company.created`)
-  - `account.queue` (routing key: `account.created`)
-  - `register.queue` (routing key: `register.created`)
+### RegisterRequest
+```json
+{
+  "accountId": 1,
+  "description": "Transaction description",
+  "amount": 100.00,
+  "type": "CREDIT"
+}
+```
 
 ## Database Schema
 
-The system uses the existing database schema with tables:
-
-- `company`
-- `account`
-- `register`
-- `transaction`
-- `conciliation`
-
-## Monitoring
-
-- Gateway Service: `/api/v1/gateway/health`
-- Consumer Service: `/actuator/health`
-- RabbitMQ Management: Port 15672
+The service uses PostgreSQL with Flyway migrations. Tables include:
+- `company` - Company entities
+- `account` - Account entities linked to companies
+- `register` - Transaction registers
+- `transaction` - Financial transactions
+- `conciliation` - Reconciliation records
 
 ## Configuration
 
 ### Environment Variables
+- `QSTASH_CURRENT_SIGNING_KEY` - QStash signing key for webhook verification
+- `QSTASH_NEXT_SIGNING_KEY` - Next signing key for key rotation (optional)
+- `POSTGRES_HOST` - PostgreSQL host (default: localhost)
+- `POSTGRES_PORT` - PostgreSQL port (default: 5432)
+- `POSTGRES_DB` - Database name (default: optica-db)
+- `POSTGRES_USER` - Database username (default: postgres)
+- `POSTGRES_PASSWORD` - Database password (default: optica123)
 
-- `POSTGRES_HOST`: PostgreSQL host
-- `POSTGRES_PORT`: PostgreSQL port
-- `POSTGRES_DB`: Database name
-- `POSTGRES_USER`: Database username
-- `POSTGRES_PASSWORD`: Database password
-- `RABBITMQ_HOST`: RabbitMQ host
-- `RABBITMQ_PORT`: RabbitMQ port
-- `RABBITMQ_USERNAME`: RabbitMQ username
-- `RABBITMQ_PASSWORD`: RabbitMQ password
+## Monitoring
 
-## Best Practices Implemented
+### View Logs
+```bash
+docker-compose logs -f qstash-consumer
+```
 
-- **Microservices Architecture**: Separation of concerns
-- **Event-Driven Architecture**: Asynchronous processing
-- **Shared Libraries**: Common code reuse
-- **Configuration Management**: Environment-based config
-- **Health Checks**: Monitoring and observability
-- **Resource Limits**: Kubernetes resource management
-- **Persistent Storage**: Database and message persistence
-- **Load Balancing**: Multiple service replicas
+### Check Health
+```bash
+curl http://localhost:8080/api/v1/webhooks/qstash/health
+```
+
+### Database Access
+```bash
+docker-compose exec postgres psql -U postgres -d optica-db
+```
+
+## Security
+
+- All webhook endpoints require valid QStash signatures
+- Invalid signatures return 401 Unauthorized
+- Processing errors return 500 to trigger QStash retries
+- JWT-based signature verification with key rotation support
+
+## Message Flow
+
+1. **Frontend** sends HTTP request to QStash API
+2. **QStash** stores message and delivers to webhook endpoint
+3. **QStash Consumer** verifies signature and processes message
+4. **Database** stores the processed entity
+5. **QStash** receives success/failure response and handles retries if needed
+
+## Development
+
+### Local Development
+```bash
+# Start PostgreSQL
+docker-compose up -d postgres
+
+# Run the application
+cd qstash-consumer
+mvn spring-boot:run
+```
+
+### Testing Webhooks
+```bash
+# Test health endpoint
+./test-webhook.sh
+```
 
 ## Troubleshooting
 
-### Check Pod Status
+### Common Issues
+1. **Invalid Signature Errors**: Verify QStash signing keys are correctly set
+2. **Database Connection**: Ensure PostgreSQL is running and accessible
+3. **Message Processing Failures**: Check application logs for specific errors
 
-```bash
-kubectl get pods -n payment-system
-```
+### QStash Console
+Monitor message delivery status, retries, and errors in the [QStash Console](https://console.upstash.com/)
 
-### View Logs
+## Documentation
 
-```bash
-kubectl logs -f deployment/gateway-service -n payment-system
-kubectl logs -f deployment/consumer-service -n payment-system
-```
+- [Frontend Integration Guide](FRONTEND_INTEGRATION_GUIDE.md) - Detailed guide for frontend developers
+- [CLAUDE.md](CLAUDE.md) - Development commands and project structure
 
-### Check RabbitMQ Queues
+## Support
 
-Access RabbitMQ Management UI at http://rabbitmq-management.local
-
-### Database Connection Issues
-
-```bash
-kubectl exec -it deployment/postgres -n payment-system -- psql -U postgres -d optica-db
-```
+For issues related to:
+- **QStash**: [Upstash Documentation](https://docs.upstash.com/qstash)
+- **Consumer Service**: Check application logs and health endpoints
+- **Database**: Verify migrations and data consistency
