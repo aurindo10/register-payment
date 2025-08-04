@@ -1,13 +1,14 @@
 version: '3.8'
 
 services:
+  # Infrastructure
   postgres:
     image: postgres:15
     container_name: register-payment-postgres
     environment:
-      POSTGRES_DB: optica-db
+      POSTGRES_DB: register_payment
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: optica123
+      POSTGRES_PASSWORD: password
     ports:
       - "5432:5432"
     volumes:
@@ -18,24 +19,70 @@ services:
       timeout: 10s
       retries: 5
 
-  app:
-    build: .
-    container_name: register-payment-app
+  rabbitmq:
+    build:
+      context: .
+      dockerfile: Dockerfile.rabbitmq
+    container_name: register-payment-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: !@#Solenge123!
+    ports:
+      - "5672:5672"
+      - "15672:15672"  # Management UI
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Publisher - API only
+  publisher:
+    build:
+      context: .
+      dockerfile: Dockerfile.publisher
+    container_name: register-payment-publisher
     ports:
       - "8080:8080"
+    environment:
+      PORT: 8080
+      RABBITMQ_URL: amqp://app_user:AppUser123!@rabbitmq:5672/register-payment
+      RABBITMQ_EXCHANGE: transactions
+      RABBITMQ_QUEUE: transaction.register
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      replicas: 2  # Can scale horizontally
+
+  # Consumer - Worker only
+  consumer:
+    build:
+      context: .
+      dockerfile: Dockerfile.consumer
+    container_name: register-payment-consumer
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: optica123
-      POSTGRES_DB: optica-db
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: register_payment
       POSTGRES_SSL_MODE: disable
-      QSTASH_CURRENT_SIGNING_KEY: ${QSTASH_CURRENT_SIGNING_KEY}
-      QSTASH_NEXT_SIGNING_KEY: ${QSTASH_NEXT_SIGNING_KEY}
+      RABBITMQ_URL: amqp://app_user:AppUser123!@rabbitmq:5672/register-payment
+      RABBITMQ_EXCHANGE: transactions
+      RABBITMQ_QUEUE: transaction.register
     depends_on:
       postgres:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     restart: unless-stopped
+    deploy:
+      replicas: 1  # Can scale based on queue depth
 
 volumes:
   postgres_data:
+  rabbitmq_data:

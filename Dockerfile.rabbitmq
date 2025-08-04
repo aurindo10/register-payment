@@ -1,0 +1,22 @@
+# RabbitMQ Dockerfile for Fly.io deployment
+FROM rabbitmq:3.12-management
+
+# Create rabbitmq user and set permissions
+RUN rabbitmq-plugins enable rabbitmq_management
+
+# Copy custom configuration
+COPY rabbitmq.conf /etc/rabbitmq/rabbitmq.conf
+COPY definitions.json /etc/rabbitmq/definitions.json
+
+# Set proper permissions
+RUN chown rabbitmq:rabbitmq /etc/rabbitmq/rabbitmq.conf /etc/rabbitmq/definitions.json
+
+# Expose ports
+EXPOSE 5672 15672
+
+# Use custom entrypoint to initialize
+COPY docker-entrypoint-rabbitmq.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint-rabbitmq.sh
+
+ENTRYPOINT ["docker-entrypoint-rabbitmq.sh"]
+CMD ["rabbitmq-server"]

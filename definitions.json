@@ -1,0 +1,92 @@
+{
+  "rabbit_version": "3.12.0",
+  "users": [
+    {
+      "name": "admin",
+      "password": "!@#Solenge123!",
+      "tags": [
+        "administrator"
+      ]
+    },
+    {
+      "name": "app_user",
+      "password": "AppUser123!",
+      "tags": [
+        "management"
+      ]
+    }
+  ],
+  "vhosts": [
+    {
+      "name": "/"
+    },
+    {
+      "name": "/register-payment"
+    }
+  ],
+  "permissions": [
+    {
+      "user": "admin",
+      "vhost": "/",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    },
+    {
+      "user": "admin",
+      "vhost": "/register-payment",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    },
+    {
+      "user": "app_user",
+      "vhost": "/register-payment",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ],
+  "topic_permissions": [],
+  "parameters": [],
+  "global_parameters": [
+    {
+      "name": "cluster_name",
+      "value": "register-payment-cluster"
+    }
+  ],
+  "policies": [],
+  "queues": [
+    {
+      "name": "transaction.register",
+      "vhost": "/register-payment",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 3600000,
+        "x-max-length": 10000
+      }
+    }
+  ],
+  "exchanges": [
+    {
+      "name": "transactions",
+      "vhost": "/register-payment",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    }
+  ],
+  "bindings": [
+    {
+      "source": "transactions",
+      "vhost": "/register-payment",
+      "destination": "transaction.register",
+      "destination_type": "queue",
+      "routing_key": "transaction.register",
+      "arguments": {}
+    }
+  ]
+}

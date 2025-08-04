@@ -6,14 +6,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Build and Test
 ```bash
-# Build the Go application
-go build -o bin/server ./cmd/server
+# Build microservices
+go build -o bin/publisher ./cmd/publisher  # API-only service
+go build -o bin/consumer ./cmd/consumer    # Worker-only service
 
 # Run tests
 go test ./...
-
-# Build Docker image
-docker build -t register-payment:latest .
 
 # Format code
 go fmt ./...
@@ -24,55 +22,83 @@ go vet ./...
 
 ### Local Development
 ```bash
-# Start PostgreSQL (required for the application)
-docker run -d --name postgres \
-  -e POSTGRES_DB=optica-db \
-  -e POSTGRES_USER=postgres \
-  -e POSTGRES_PASSWORD=optica123 \
-  -p 5432:5432 postgres:15
+# Start infrastructure (PostgreSQL + RabbitMQ)
+docker-compose up postgres rabbitmq -d
 
 # Set environment variables
-export QSTASH_CURRENT_SIGNING_KEY=your_current_signing_key_here
-export QSTASH_NEXT_SIGNING_KEY=your_next_signing_key_here
+cp .env.example .env
+# Edit .env with your values
 
 # Run database migrations
 go run scripts/migrate.go -direction=up
 
-# Run the application (port 8080)
-go run ./cmd/server
+# Run publisher (API only)
+go run ./cmd/publisher
+
+# In another terminal, run consumer (worker only)
+go run ./cmd/consumer
 ```
 
 ### Docker Deployment
 ```bash
-# Deploy complete stack (PostgreSQL + Application)
+# Deploy microservices stack
 docker-compose up -d
 
 # View logs
-docker-compose logs -f app
+docker-compose logs -f publisher
+docker-compose logs -f consumer
+
+# Scale services independently
+docker-compose up -d --scale publisher=3 --scale consumer=2
 
 # Stop services
 docker-compose down
 ```
 
+### Fly.io Deployment
+```bash
+# Deploy both services with shared PostgreSQL
+./scripts/deploy.sh
+
+# Monitor services
+flyctl logs --app register-payment-publisher
+flyctl logs --app register-payment-consumer
+
+# Scale services independently
+flyctl scale count 3 --app register-payment-publisher  # Scale API
+flyctl scale count 2 --app register-payment-consumer   # Scale workers
+```
+
 ## Architecture Overview
 
-This is a **Go application** that processes **QStash webhook messages** for transaction registration:
+This is a **Go microservices application** for transaction processing with **RabbitMQ message queuing**:
 
-### Core Application
-- **register-payment**: Go application that receives QStash webhooks and processes transaction data (port 8080)
+### Microservices Architecture
+
+#### Publisher Service (`cmd/publisher`)
+- **Purpose**: REST API that accepts transactions and publishes to RabbitMQ
+- **Port**: 8080
+- **Dependencies**: RabbitMQ only (no database)
+- **Scaling**: Horizontal (stateless)
+
+#### Consumer Service (`cmd/consumer`) 
+- **Purpose**: Background worker that processes messages and persists to database
+- **Port**: None (worker process)  
+- **Dependencies**: RabbitMQ + PostgreSQL
+- **Scaling**: Based on queue depth
 
 ### Message Flow
-1. Frontend sends transaction data to QStash API
-2. QStash delivers webhook messages to application endpoints
-3. Application verifies signatures and processes messages
-4. Transaction data is stored in PostgreSQL database
+1. Frontend/API clients send transactions to Publisher API
+2. Publisher validates and publishes messages to RabbitMQ
+3. Consumer processes messages from queue
+4. Consumer persists transaction data to PostgreSQL database
 
 ### Key Technologies
 - Go 1.21+
 - Gin HTTP framework
-- QStash for serverless message queuing
+- RabbitMQ for reliable message queuing
 - PostgreSQL with golang-migrate migrations
-- JWT and HMAC signature verification
+- Native Go Money type for financial precision
 - Docker for deployment
 
 ## Database Schema
@@ -80,52 +106,57 @@ This is a **Go application** that processes **QStash webhook messages** for tran
 Tables managed via migrations in `migrations/`:
 - `transactions` - Transaction records with value, type (in/out), and external company ID
 
-## QStash Integration
+## RabbitMQ Integration
 
-- **Webhook Endpoints**: `/api/v1/webhooks/qstash/transaction`
-- **Signature Verification**: JWT-based and HMAC-256 with key rotation support
-- **Retry Handling**: Automatic retries by QStash on 5xx responses
-- **Security**: All endpoints require valid QStash signatures
+- **Exchange**: `transactions` (direct exchange)
+- **Queue**: `transaction.register` 
+- **Routing Key**: `transaction.register`
+- **Message Format**: JSON with TransactionRequest structure
+- **Reliability**: Message acknowledgments and automatic retries
 
 ## REST API Endpoints
 
-### QStash Webhook Endpoints (port 8080)
-- `POST /api/v1/webhooks/qstash/transaction` - Process transaction creation
-- `GET /api/v1/webhooks/qstash/health` - Health check
+### Publisher API Endpoints (port 8080)
+- `POST /api/v1/transactions/` - Queue transaction for processing
+- `GET /api/v1/health` - Health check
+- `GET /api/v1/metrics` - Publisher metrics
 
 ## Environment Configuration
 
-The service uses environment variables with sensible defaults:
+### Publisher Service Environment Variables
+- `PORT` (default: 8080) - HTTP server port
+- `RABBITMQ_URL` (default: amqp://guest:guest@localhost:5672/) - RabbitMQ connection
+- `RABBITMQ_EXCHANGE` (default: transactions) - RabbitMQ exchange name  
+- `RABBITMQ_QUEUE` (default: transaction.register) - RabbitMQ queue name
 
-### QStash Configuration
-- `QSTASH_CURRENT_SIGNING_KEY` - Current signing key for webhook verification (required)
-- `QSTASH_NEXT_SIGNING_KEY` - Next signing key for key rotation (optional)
-
-### Database Configuration
-- `POSTGRES_HOST` (default: localhost)
-- `POSTGRES_PORT` (default: 5432)
-- `POSTGRES_DB` (default: optica-db)
-- `POSTGRES_USER` (default: postgres)
-- `POSTGRES_PASSWORD` (default: optica123)
-- `POSTGRES_SSL_MODE` (default: disable)
-
-### Server Configuration
-- `PORT` (default: 8080)
+### Consumer Service Environment Variables
+- `POSTGRES_HOST` (default: localhost) - Database host
+- `POSTGRES_PORT` (default: 5432) - Database port
+- `POSTGRES_DB` (default: register_payment) - Database name
+- `POSTGRES_USER` (default: postgres) - Database user
+- `POSTGRES_PASSWORD` (default: password) - Database password
+- `POSTGRES_SSL_MODE` (default: disable) - Database SSL mode
+- `RABBITMQ_URL` (default: amqp://guest:guest@localhost:5672/) - RabbitMQ connection
+- `RABBITMQ_EXCHANGE` (default: transactions) - RabbitMQ exchange name
+- `RABBITMQ_QUEUE` (default: transaction.register) - RabbitMQ queue name
 
 ## Development Guidelines
 
 ### Application Structure
-- Go project structure with clear separation of concerns:
-  - `cmd/server/` - Application entry point
+- Go microservices project structure:
+  - `cmd/publisher/` - Publisher service entry point
+  - `cmd/consumer/` - Consumer service entry point
   - `internal/config/` - Configuration management
   - `internal/dto/` - Data Transfer Objects
   - `internal/entity/` - Database entities
-  - `internal/handler/` - HTTP handlers
+  - `internal/handler/` - HTTP and message handlers
   - `internal/repository/` - Data access layer
   - `internal/service/` - Business logic layer
   - `pkg/database/` - Database connection utilities
+  - `pkg/rabbitmq/` - RabbitMQ connection and messaging
+  - `pkg/money/` - Financial calculations with precision
   - `migrations/` - Database migrations
-  - `scripts/` - Utility scripts
+  - `scripts/` - Deployment scripts
 
 ### Testing Strategy
 - Go test structure in each package

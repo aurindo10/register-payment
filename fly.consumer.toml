@@ -1,0 +1,37 @@
+app = "register-payment-consumer"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile.consumer"
+
+[env]
+  POSTGRES_SSL_MODE = "require"
+  RABBITMQ_EXCHANGE = "transactions"
+  RABBITMQ_QUEUE = "transaction.register"
+  # Database connection will be automatically injected by `flyctl postgres attach`
+  # But we can set defaults or overrides here if needed
+
+# No HTTP service - this is a worker process
+# Could add internal health check service if needed
+
+[[processes]]
+  [processes.worker]
+    cmd = ["./consumer"]
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512  # More memory for database operations
+
+# Optional: Add internal health service for monitoring
+# [http_service]
+#   internal_port = 8081
+#   processes = ["worker"]
+#   
+#   [[services.http_checks]]
+#     interval = "30s"
+#     timeout = "5s"
+#     grace_period = "2s"
+#     method = "get"
+#     path = "/health"
+#     protocol = "http"

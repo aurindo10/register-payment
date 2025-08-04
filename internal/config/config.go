@@ -8,7 +8,7 @@ import (
 type Config struct {
 	Server   ServerConfig
 	Database DatabaseConfig
-	QStash   QStashConfig
+	RabbitMQ RabbitMQConfig
 }
 
 type ServerConfig struct {
@@ -24,9 +24,10 @@ type DatabaseConfig struct {
 	SSLMode  string
 }
 
-type QStashConfig struct {
-	CurrentSigningKey string
-	NextSigningKey    string
+type RabbitMQConfig struct {
+	URL       string
+	Exchange  string
+	Queue     string
 }
 
 func Load() *Config {
@@ -42,9 +43,10 @@ func Load() *Config {
 			DBName:   getEnv("POSTGRES_DB", "optica-db"),
 			SSLMode:  getEnv("POSTGRES_SSL_MODE", "disable"),
 		},
-		QStash: QStashConfig{
-			CurrentSigningKey: getEnv("QSTASH_CURRENT_SIGNING_KEY", ""),
-			NextSigningKey:    getEnv("QSTASH_NEXT_SIGNING_KEY", ""),
+		RabbitMQ: RabbitMQConfig{
+			URL:      getEnv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/"),
+			Exchange: getEnv("RABBITMQ_EXCHANGE", "transactions"),
+			Queue:    getEnv("RABBITMQ_QUEUE", "transaction.register"),
 		},
 	}
 }

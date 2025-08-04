@@ -1,0 +1,41 @@
+# Consumer Dockerfile - Worker only, needs database
+FROM golang:1.23-alpine AS builder
+
+WORKDIR /app
+
+RUN apk add --no-cache git ca-certificates tzdata
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+# Build the consumer
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags '-w -s' -o consumer ./cmd/consumer
+
+# Final stage
+FROM alpine:latest
+
+RUN apk --no-cache add ca-certificates tzdata postgresql-client curl
+
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -u 1001 -S appuser -G appgroup
+
+WORKDIR /app
+
+COPY --from=builder /app/consumer .
+COPY --from=builder /app/migrations ./migrations
+
+# Copy startup script for consumer
+COPY docker-entrypoint-consumer.sh .
+RUN chmod +x docker-entrypoint-consumer.sh
+
+RUN chown -R appuser:appgroup /app
+
+USER appuser
+
+# No HTTP port exposed - this is a worker process
+# Could expose a metrics/health port if needed
+
+ENTRYPOINT ["./docker-entrypoint-consumer.sh"]
+CMD ["./consumer"]

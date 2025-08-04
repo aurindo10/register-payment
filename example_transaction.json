@@ -1,0 +1,7 @@
+{
+  "transaction_id": "TXN-2024-001",
+  "value": "1234.56",
+  "type": "in",
+  "external_company_id": "COMP-001",
+  "description": "Payment received from customer"
+}

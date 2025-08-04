@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS transactions (
     id SERIAL PRIMARY KEY,
     transaction_id VARCHAR(255) UNIQUE NOT NULL,
-    value DECIMAL(15,2) NOT NULL,
+    value BIGINT NOT NULL,
     type VARCHAR(10) NOT NULL CHECK (type IN ('in', 'out')),
     external_company_id VARCHAR(255) NOT NULL,
     description TEXT,

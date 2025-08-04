@@ -1,0 +1,41 @@
+# Publisher Dockerfile - API only, no database
+FROM golang:1.23-alpine AS builder
+
+WORKDIR /app
+
+RUN apk add --no-cache git ca-certificates tzdata
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+# Build the publisher
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags '-w -s' -o publisher ./cmd/publisher
+
+# Final stage
+FROM alpine:latest
+
+RUN apk --no-cache add ca-certificates tzdata curl
+
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -u 1001 -S appuser -G appgroup
+
+WORKDIR /app
+
+COPY --from=builder /app/publisher .
+
+# Create a simple health check script
+RUN echo '#!/bin/sh\ncurl -f http://localhost:$PORT/api/v1/health || exit 1' > health-check.sh && \
+    chmod +x health-check.sh
+
+RUN chown -R appuser:appgroup /app
+
+USER appuser
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD ./health-check.sh
+
+CMD ["./publisher"]
