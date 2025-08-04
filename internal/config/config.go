@@ -36,12 +36,12 @@ func Load() *Config {
 			Port: getEnv("PORT", "8080"),
 		},
 		Database: DatabaseConfig{
-			Host:     getEnv("POSTGRES_HOST", "localhost"),
+			Host:     getEnv("POSTGRES_HOST", "register-payment-db.internal"),
 			Port:     getEnv("POSTGRES_PORT", "5432"),
 			User:     getEnv("POSTGRES_USER", "postgres"),
-			Password: getEnv("POSTGRES_PASSWORD", "optica123"),
-			DBName:   getEnv("POSTGRES_DB", "optica-db"),
-			SSLMode:  getEnv("POSTGRES_SSL_MODE", "disable"),
+			Password: getEnv("POSTGRES_PASSWORD", ""),
+			DBName:   getEnv("POSTGRES_DB", "register_payment"),
+			SSLMode:  getEnv("POSTGRES_SSL_MODE", "require"),
 		},
 		RabbitMQ: RabbitMQConfig{
 			URL:      getEnv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/"),
